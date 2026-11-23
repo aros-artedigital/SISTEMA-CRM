@@ -1,0 +1,129 @@
+// Schema do CRM (uso interno, MVP).
+// Baseado em H:\DEV\crm\modelo-de-dados.md
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Papel {
+  ADMIN
+  VENDEDOR
+}
+
+enum EtapaNegocio {
+  NOVO_LEAD
+  QUALIFICADO
+  PROPOSTA
+  GANHO
+  PERDIDO
+}
+
+enum TipoAtividade {
+  LIGACAO
+  REUNIAO
+  EMAIL
+  NOTA
+}
+
+model Usuario {
+  id        String   @id @default(cuid())
+  nome      String
+  email     String   @unique
+  senhaHash String
+  papel     Papel    @default(VENDEDOR)
+  criadoEm  DateTime @default(now())
+
+  negocios  Negocio[]
+  tarefas   Tarefa[]
+  atividades Atividade[]
+}
+
+model Empresa {
+  id        String   @id @default(cuid())
+  nome      String
+  cnpj      String?
+  site      String?
+  telefone  String?
+  endereco  String?
+  criadoEm  DateTime @default(now())
+
+  contatos  Contato[]
+  negocios  Negocio[]
+}
+
+model Contato {
+  id        String   @id @default(cuid())
+  nome      String
+  email     String?
+  telefone  String?
+  cargo     String?
+  criadoEm  DateTime @default(now())
+
+  empresaId String?
+  empresa   Empresa? @relation(fields: [empresaId], references: [id], onDelete: SetNull)
+
+  negocios   Negocio[]
+  atividades Atividade[]
+  tarefas    Tarefa[]
+}
+
+model Negocio {
+  id         String       @id @default(cuid())
+  titulo     String
+  valor      Decimal      @db.Decimal(12, 2)
+  etapa      EtapaNegocio @default(NOVO_LEAD)
+  fechadoEm  DateTime?
+  criadoEm   DateTime     @default(now())
+
+  responsavelId String
+  responsavel   Usuario  @relation(fields: [responsavelId], references: [id])
+
+  contatoId String?
+  contato   Contato? @relation(fields: [contatoId], references: [id], onDelete: SetNull)
+
+  empresaId String?
+  empresa   Empresa? @relation(fields: [empresaId], references: [id], onDelete: SetNull)
+
+  atividades Atividade[]
+  tarefas    Tarefa[]
+}
+
+model Atividade {
+  id        String        @id @default(cuid())
+  tipo      TipoAtividade
+  descricao String
+  data      DateTime      @default(now())
+  criadoEm  DateTime      @default(now())
+
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+
+  contatoId String?
+  contato   Contato? @relation(fields: [contatoId], references: [id], onDelete: SetNull)
+
+  negocioId String?
+  negocio   Negocio? @relation(fields: [negocioId], references: [id], onDelete: SetNull)
+}
+
+model Tarefa {
+  id        String    @id @default(cuid())
+  titulo    String
+  prazo     DateTime?
+  concluida Boolean   @default(false)
+  criadoEm  DateTime  @default(now())
+
+  responsavelId String
+  responsavel   Usuario @relation(fields: [responsavelId], references: [id])
+
+  contatoId String?
+  contato   Contato? @relation(fields: [contatoId], references: [id], onDelete: SetNull)
+
+  negocioId String?
+  negocio   Negocio? @relation(fields: [negocioId], references: [id], onDelete: SetNull)
+}
