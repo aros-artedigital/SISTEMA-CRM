@@ -1,49 +1,27 @@
-// Página inicial: atalhos e um resumo do que precisa de atenção hoje.
+// Página inicial: o que precisa de atenção hoje e o painel de vendas.
 
 import Link from "next/link";
 import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
 import { exigirUsuario } from "@/lib/autenticacao";
 import { inicioDoDia, somarDias } from "@/lib/datas";
-
-const estiloAtalho =
-  "rounded-lg border border-zinc-200 p-4 hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-900";
+import { formatarReais } from "@/lib/dinheiro";
+import { buscarMetricas } from "./painel/dados";
+import { CartaoGrafico, Indicador, Variacao } from "./painel/blocos";
+import { GraficoFunil, GraficoGanhosPorMes } from "./painel/graficos";
 
 export default function Inicio() {
   return (
-    <main className="mx-auto grid w-full max-w-4xl gap-6 px-4 py-10">
-      <h1 className="text-2xl font-semibold">CRM</h1>
+    <main className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-10">
+      <h1 className="text-2xl font-semibold">Painel</h1>
 
       <Suspense fallback={<p className="text-sm">Carregando resumo...</p>}>
         <ResumoDoDia />
       </Suspense>
 
-      <nav className="grid gap-3 sm:grid-cols-2">
-        <Link href="/negocios" className={estiloAtalho}>
-          <span className="block font-medium">Funil de negócios</span>
-          <span className="text-sm text-zinc-600 dark:text-zinc-400">
-            Acompanhar oportunidades por etapa
-          </span>
-        </Link>
-        <Link href="/tarefas" className={estiloAtalho}>
-          <span className="block font-medium">Tarefas</span>
-          <span className="text-sm text-zinc-600 dark:text-zinc-400">
-            O que precisa ser feito, por prazo
-          </span>
-        </Link>
-        <Link href="/contatos" className={estiloAtalho}>
-          <span className="block font-medium">Contatos</span>
-          <span className="text-sm text-zinc-600 dark:text-zinc-400">
-            Pessoas e histórico de conversas
-          </span>
-        </Link>
-        <Link href="/empresas" className={estiloAtalho}>
-          <span className="block font-medium">Empresas</span>
-          <span className="text-sm text-zinc-600 dark:text-zinc-400">
-            Cadastrar e listar organizações
-          </span>
-        </Link>
-      </nav>
+      <Suspense fallback={<p className="text-sm">Carregando painel...</p>}>
+        <PainelVendas />
+      </Suspense>
     </main>
   );
 }
@@ -84,5 +62,87 @@ async function ResumoDoDia() {
         </Link>
       )}
     </section>
+  );
+}
+
+async function PainelVendas() {
+  await exigirUsuario();
+  const m = await buscarMetricas();
+
+  const encerrados = m.taxaGanho.ganhos + m.taxaGanho.perdidos;
+  const taxa = encerrados > 0 ? Math.round((m.taxaGanho.ganhos / encerrados) * 100) : null;
+  const diferencaMes = m.ganhoMes.valor - m.ganhoMes.mesAnterior;
+  const plural = (n: number, s: string, p: string) => `${n} ${n === 1 ? s : p}`;
+
+  return (
+    <div className="grid gap-6">
+      {/* Indicadores. O primeiro é o número principal do painel. */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
+        <Indicador
+          destaque
+          rotulo="Em aberto no funil"
+          valor={formatarReais(m.emAberto.valor)}
+          rodape={
+            <span className="text-zinc-600 dark:text-zinc-400">
+              {plural(m.emAberto.quantidade, "negócio em andamento", "negócios em andamento")}
+            </span>
+          }
+        />
+        <Indicador
+          rotulo="Ganho este mês"
+          valor={formatarReais(m.ganhoMes.valor)}
+          rodape={
+            <Variacao
+              diferenca={diferencaMes}
+              texto={`${formatarReais(Math.abs(diferencaMes))} que no mês passado`}
+            />
+          }
+        />
+        <Indicador
+          rotulo="Taxa de ganho"
+          valor={taxa === null ? "—" : `${taxa}%`}
+          rodape={
+            <span className="text-zinc-600 dark:text-zinc-400">
+              {encerrados === 0
+                ? "Nenhum negócio encerrado ainda"
+                : `${plural(m.taxaGanho.ganhos, "ganho", "ganhos")} de ${plural(encerrados, "encerrado", "encerrados")}`}
+            </span>
+          }
+        />
+        <Indicador
+          rotulo="Negócios em aberto"
+          valor={String(m.emAberto.quantidade)}
+          rodape={
+            <Link href="/negocios" className="text-zinc-600 underline dark:text-zinc-400">
+              Ver funil
+            </Link>
+          }
+        />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <CartaoGrafico
+          titulo="Funil por etapa"
+          subtitulo="Valor em aberto e número de negócios em cada etapa"
+          tabela={{
+            colunas: ["Etapa", "Valor", "Negócios"],
+            linhas: m.porEtapa.map((e) => [e.nome, formatarReais(e.valor), String(e.quantidade)]),
+          }}
+        >
+          <GraficoFunil dados={m.porEtapa} />
+        </CartaoGrafico>
+
+        <CartaoGrafico
+          titulo="Ganhos por mês"
+          subtitulo="Valor dos negócios ganhos nos últimos 6 meses"
+          tabela={{
+            colunas: ["Mês", "Valor ganho", "Negócios"],
+            linhas: m.porMes.map((x) => [x.rotuloLongo, formatarReais(x.valor), String(x.quantidade)]),
+          }}
+        >
+          <GraficoGanhosPorMes dados={m.porMes} />
+        </CartaoGrafico>
+      </div>
+    </div>
   );
 }

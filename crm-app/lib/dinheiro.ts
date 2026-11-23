@@ -10,6 +10,18 @@ export function formatarReais(valor: number): string {
   return formatador.format(valor);
 }
 
+const formatadorCompacto = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
+// 12500 → "R$ 12,5 mil" (para eixos e espaços curtos)
+export function formatarReaisCompacto(valor: number): string {
+  return formatadorCompacto.format(valor);
+}
+
 // Converte o que a pessoa digitou em número.
 // Aceita "1500", "1500,50", "1.500,50", "R$ 1.500,50" e "1500.50".
 // Retorna null se não for um número válido.

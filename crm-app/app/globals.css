@@ -23,6 +23,40 @@
   }
 }
 
+/* Cores dos gráficos do painel. Validadas para contraste e daltonismo
+   (série azul ≥ 3:1 nas duas superfícies). Os gráficos usam só estes nomes,
+   nunca o hexadecimal direto, para o modo escuro trocar tudo num lugar só. */
+:root {
+  --viz-serie: #2a78d6;
+  --viz-serie-hover: #1c5cab;
+  --viz-grade: #e1e0d9;
+  --viz-eixo: #c3c2b7;
+  --viz-texto-mudo: #6b6a66;
+  --viz-sucesso: #006300;
+  --viz-critico: #b42828;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --viz-serie: #3987e5;
+    --viz-serie-hover: #6da7ec;
+    --viz-grade: #2c2c2a;
+    --viz-eixo: #383835;
+    --viz-texto-mudo: #a3a29c;
+    --viz-sucesso: #0ca30c;
+    --viz-critico: #e66767;
+  }
+}
+
+/* Classes que usam as cores acima. (O Tailwind descarta variáveis que
+   nenhuma regra CSS usa, por isso os gráficos usam estas classes.) */
+.viz-barra { background: var(--viz-serie); transition: background 120ms; }
+.viz-barra-ativa { background: var(--viz-serie-hover); }
+.viz-grade { background: var(--viz-grade); }
+.viz-eixo { background: var(--viz-eixo); }
+.viz-texto-mudo { color: var(--viz-texto-mudo); }
+.viz-sucesso { color: var(--viz-sucesso); }
+.viz-critico { color: var(--viz-critico); }
+
 body {
   background: var(--background);
   color: var(--foreground);
