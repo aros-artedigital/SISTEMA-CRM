@@ -54,7 +54,9 @@ export function exigenciaCodigoPrimeiroAcesso(): "sim" | "faltando" | "nao" {
 // Compara em tempo constante: a resposta não fica mais rápida ou mais lenta
 // conforme quantas letras estão certas (isso ajudaria a adivinhar o código).
 export function codigoPrimeiroAcessoCorreto(digitado: FormDataEntryValue | null): boolean {
-  const esperado = process.env.CODIGO_PRIMEIRO_ACESSO;
+  // trim() nos dois lados: ignora espaços e quebras de linha nas pontas
+  // (comuns ao copiar e colar o código ou ao cadastrá-lo no servidor).
+  const esperado = process.env.CODIGO_PRIMEIRO_ACESSO?.trim();
   if (!esperado || typeof digitado !== "string") return false;
   const resumo = (texto: string) => createHash("sha256").update(texto).digest();
   return timingSafeEqual(resumo(digitado.trim()), resumo(esperado));
