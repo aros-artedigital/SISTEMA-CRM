@@ -3,12 +3,18 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import { ETAPAS } from "@/lib/etapas";
+import { FUSO, meiaNoite, partesData } from "@/lib/datas";
 
 const ETAPAS_ABERTAS = ["NOVO_LEAD", "QUALIFICADO", "PROPOSTA"] as const;
 const MESES_NO_GRAFICO = 6;
 
-const nomeMes = new Intl.DateTimeFormat("pt-BR", { month: "short" });
-const nomeMesAno = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
+// Nomes dos meses no fuso de Brasília (o servidor da Vercel usa UTC).
+const nomeMes = new Intl.DateTimeFormat("pt-BR", { month: "short", timeZone: FUSO });
+const nomeMesAno = new Intl.DateTimeFormat("pt-BR", {
+  month: "long",
+  year: "numeric",
+  timeZone: FUSO,
+});
 
 export type MetricasPainel = {
   emAberto: { valor: number; quantidade: number };
@@ -19,9 +25,9 @@ export type MetricasPainel = {
 };
 
 export async function buscarMetricas(): Promise<MetricasPainel> {
-  const agora = new Date();
+  const hoje = partesData(new Date());
   // Primeiro dia do mês mais antigo que aparece no gráfico.
-  const inicioPeriodo = new Date(agora.getFullYear(), agora.getMonth() - (MESES_NO_GRAFICO - 1), 1);
+  const inicioPeriodo = meiaNoite(hoje.ano, hoje.mes - (MESES_NO_GRAFICO - 1), 1);
 
   const [abertosPorEtapa, encerradosPorEtapa, ganhosRecentes] = await Promise.all([
     // groupBy = "agrupar e somar" direto no banco, sem trazer cada negócio.
@@ -56,10 +62,11 @@ export async function buscarMetricas(): Promise<MetricasPainel> {
 
   // Ganhos por mês: cria os 6 meses zerados e soma cada negócio no seu mês.
   const porMes = Array.from({ length: MESES_NO_GRAFICO }, (_, i) => {
-    const data = new Date(inicioPeriodo.getFullYear(), inicioPeriodo.getMonth() + i, 1);
+    const data = meiaNoite(hoje.ano, hoje.mes - (MESES_NO_GRAFICO - 1) + i, 1);
+    const { ano, mes } = partesData(data);
     return {
-      ano: data.getFullYear(),
-      mes: data.getMonth(),
+      ano,
+      mes,
       rotulo: nomeMes.format(data).replace(".", ""),
       rotuloLongo: nomeMesAno.format(data),
       valor: 0,
@@ -68,9 +75,8 @@ export async function buscarMetricas(): Promise<MetricasPainel> {
   });
   for (const negocio of ganhosRecentes) {
     if (!negocio.fechadoEm) continue;
-    const alvo = porMes.find(
-      (m) => m.ano === negocio.fechadoEm!.getFullYear() && m.mes === negocio.fechadoEm!.getMonth(),
-    );
+    const fechado = partesData(negocio.fechadoEm);
+    const alvo = porMes.find((m) => m.ano === fechado.ano && m.mes === fechado.mes);
     if (alvo) {
       alvo.valor += negocio.valor.toNumber();
       alvo.quantidade += 1;

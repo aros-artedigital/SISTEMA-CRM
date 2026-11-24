@@ -32,6 +32,7 @@ enum TipoAtividade {
   LIGACAO
   REUNIAO
   EMAIL
+  WHATSAPP
   NOTA
 }
 
@@ -51,6 +52,20 @@ model Usuario {
   negocios  Negocio[]
   tarefas   Tarefa[]
   atividades Atividade[]
+  lembretes LembreteEnviado[]
+}
+
+// Registro dos e-mails de lembrete já enviados: no máximo um por usuário
+// por dia, mesmo que o endereço de envio seja chamado várias vezes.
+model LembreteEnviado {
+  id        String   @id @default(cuid())
+  dia       String   // "2026-11-23" (dia em Brasília)
+  criadoEm  DateTime @default(now())
+
+  usuarioId String
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, dia])
 }
 
 model Empresa {

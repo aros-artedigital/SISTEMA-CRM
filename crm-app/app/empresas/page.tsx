@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
 import { exigirUsuario } from "@/lib/autenticacao";
 import { BotaoExcluir } from "@/app/ui/botao-excluir";
+import { BarraBusca, parametro } from "@/app/ui/barra-busca";
 import { excluirEmpresa } from "./actions";
 import { FormularioEmpresa } from "./formulario-empresa";
 
@@ -12,7 +13,9 @@ export const metadata = {
   title: "Empresas | CRM",
 };
 
-export default function PaginaEmpresas() {
+type ParametrosBusca = Promise<Record<string, string | string[] | undefined>>;
+
+export default function PaginaEmpresas({ searchParams }: { searchParams: ParametrosBusca }) {
   return (
     <main className="mx-auto grid w-full max-w-5xl gap-8 px-4 py-10">
       <header>
@@ -25,29 +28,66 @@ export default function PaginaEmpresas() {
       <FormularioEmpresa />
 
       <Suspense fallback={<p className="text-sm">Carregando empresas...</p>}>
-        <ListaEmpresas />
+        <ListaEmpresas searchParams={searchParams} />
       </Suspense>
     </main>
   );
 }
 
-async function ListaEmpresas() {
+async function ListaEmpresas({ searchParams }: { searchParams: ParametrosBusca }) {
   await exigirUsuario();
 
+  const busca = parametro((await searchParams).q);
+  const texto = { contains: busca, mode: "insensitive" as const };
+
   const empresas = await prisma.empresa.findMany({
+    where: busca
+      ? {
+          OR: [
+            { nome: texto },
+            { cnpj: texto },
+            { telefone: texto },
+            { site: texto },
+            { endereco: texto },
+          ],
+        }
+      : {},
     orderBy: { nome: "asc" },
     // _count traz quantos contatos cada empresa tem, sem carregar todos eles.
     include: { _count: { select: { contatos: true } } },
   });
 
-  if (empresas.length === 0) {
-    return (
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        Nenhuma empresa cadastrada ainda.
-      </p>
-    );
-  }
+  return (
+    <div className="grid gap-4">
+      <BarraBusca
+        caminho="/empresas"
+        busca={busca}
+        placeholder="Buscar por nome, CNPJ, telefone, site ou endereço"
+        filtroAtivo={Boolean(busca)}
+      />
+      {empresas.length === 0 ? (
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          {busca ? "Nenhuma empresa encontrada para essa busca." : "Nenhuma empresa cadastrada ainda."}
+        </p>
+      ) : (
+        <TabelaEmpresas empresas={empresas} />
+      )}
+    </div>
+  );
+}
 
+function TabelaEmpresas({
+  empresas,
+}: {
+  empresas: {
+    id: string;
+    nome: string;
+    cnpj: string | null;
+    telefone: string | null;
+    site: string | null;
+    _count: { contatos: number };
+  }[];
+}) {
   return (
     <section className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
       <table className="w-full text-left text-sm">

@@ -8,6 +8,7 @@ import { exigirUsuario } from "@/lib/autenticacao";
 import { formatarReais } from "@/lib/dinheiro";
 import { ETAPAS } from "@/lib/etapas";
 import { Dado, Secao } from "@/app/ui/secao";
+import { LinkWhatsApp } from "@/app/ui/whatsapp";
 import { FormularioAtividade } from "@/app/atividades/formulario-atividade";
 import { ListaAtividades } from "@/app/atividades/lista-atividades";
 import { FormularioTarefa } from "@/app/tarefas/formulario-tarefa";
@@ -52,12 +53,17 @@ async function DetalheContato({ params }: { params: Promise<{ id: string }> }) {
           </Link>
           <h1 className="text-2xl font-semibold">{contato.nome}</h1>
         </div>
-        <Link
-          href={`/contatos/${contato.id}/editar`}
-          className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
-        >
-          Editar
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Abre a conversa; depois registre o que foi falado no Histórico,
+              escolhendo o tipo "WhatsApp". */}
+          <LinkWhatsApp telefone={contato.telefone} nome={contato.nome} variante="botao" />
+          <Link
+            href={`/contatos/${contato.id}/editar`}
+            className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+          >
+            Editar
+          </Link>
+        </div>
       </header>
 
       <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">

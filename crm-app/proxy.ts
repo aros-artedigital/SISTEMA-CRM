@@ -15,7 +15,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { NOME_COOKIE, decifrarSessao } from "@/lib/sessao";
 
-const ROTAS_PUBLICAS = ["/login", "/primeiro-acesso"];
+// /api/lembretes é chamado pela Vercel (sem login) e tem proteção própria:
+// CRON_SECRET + no máximo um e-mail por usuário por dia.
+const ROTAS_PUBLICAS = ["/login", "/primeiro-acesso", "/api/lembretes"];
 
 export default async function proxy(req: NextRequest) {
   const caminho = req.nextUrl.pathname;

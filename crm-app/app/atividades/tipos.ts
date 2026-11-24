@@ -9,6 +9,7 @@ export const TIPOS_ATIVIDADE: { valor: TipoAtividade; nome: string; icone: strin
   { valor: "LIGACAO", nome: "Ligação", icone: "📞" },
   { valor: "REUNIAO", nome: "Reunião", icone: "👥" },
   { valor: "EMAIL", nome: "E-mail", icone: "✉️" },
+  { valor: "WHATSAPP", nome: "WhatsApp", icone: "💬" },
   { valor: "NOTA", nome: "Nota", icone: "📝" },
 ];
 
@@ -17,5 +18,8 @@ export function tipoAtividadeValido(valor: unknown): valor is TipoAtividade {
 }
 
 export function descreverTipo(valor: TipoAtividade) {
-  return TIPOS_ATIVIDADE.find((t) => t.valor === valor) ?? TIPOS_ATIVIDADE[3];
+  return (
+    TIPOS_ATIVIDADE.find((t) => t.valor === valor) ??
+    TIPOS_ATIVIDADE[TIPOS_ATIVIDADE.length - 1] // "Nota" como padrão
+  );
 }
