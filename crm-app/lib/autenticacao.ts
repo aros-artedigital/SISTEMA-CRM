@@ -6,6 +6,7 @@
 // confere o login, mas é só um primeiro filtro.
 import "server-only";
 
+import { createHash, timingSafeEqual } from "node:crypto";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -35,6 +36,28 @@ export async function exigirUsuario(): Promise<UsuarioLogado> {
   const usuario = await usuarioOpcional();
   if (!usuario) redirect("/login");
   return usuario;
+}
+
+// Código de configuração do primeiro acesso.
+//
+// Num site público, quem abrisse o endereço primeiro poderia criar o
+// usuário administrador. Para evitar isso, a tela de primeiro acesso pede
+// um código definido na variável CODIGO_PRIMEIRO_ACESSO do servidor.
+// - "sim":      o código está definido e será pedido;
+// - "faltando": está em produção sem código: a tela fica fechada;
+// - "nao":      no seu computador (desenvolvimento), não é pedido.
+export function exigenciaCodigoPrimeiroAcesso(): "sim" | "faltando" | "nao" {
+  if (process.env.CODIGO_PRIMEIRO_ACESSO) return "sim";
+  return process.env.NODE_ENV === "production" ? "faltando" : "nao";
+}
+
+// Compara em tempo constante: a resposta não fica mais rápida ou mais lenta
+// conforme quantas letras estão certas (isso ajudaria a adivinhar o código).
+export function codigoPrimeiroAcessoCorreto(digitado: FormDataEntryValue | null): boolean {
+  const esperado = process.env.CODIGO_PRIMEIRO_ACESSO;
+  if (!esperado || typeof digitado !== "string") return false;
+  const resumo = (texto: string) => createHash("sha256").update(texto).digest();
+  return timingSafeEqual(resumo(digitado.trim()), resumo(esperado));
 }
 
 // O sistema já foi configurado (alguém já definiu uma senha)?

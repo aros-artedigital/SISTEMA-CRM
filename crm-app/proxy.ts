@@ -1,8 +1,13 @@
 // Proxy: roda antes de cada página.
 //
 // Faz uma checagem rápida, só pelo cookie (sem consultar o banco):
-// - sem login → manda para /login;
-// - já logado e abrindo /login → manda para a página inicial.
+// sem login → manda para /login.
+//
+// Atenção: o proxy NÃO manda quem tem cookie para fora do /login. Um cookie
+// pode ter assinatura válida mas apontar para um usuário que não existe mais
+// (ex.: usuário excluído). Se o proxy mandasse esse caso de /login para /,
+// e a página mandasse de / para /login, a tela ficaria num vaivém sem fim.
+// Quem decide isso é a própria página de login, que consulta o banco.
 //
 // É só um primeiro filtro. A proteção de verdade está em cada página e
 // Server Action, que chamam exigirUsuario() (lib/autenticacao.ts).
@@ -19,9 +24,6 @@ export default async function proxy(req: NextRequest) {
 
   if (!publica && !sessao) {
     return NextResponse.redirect(new URL("/login", req.nextUrl));
-  }
-  if (caminho === "/login" && sessao) {
-    return NextResponse.redirect(new URL("/", req.nextUrl));
   }
   return NextResponse.next();
 }

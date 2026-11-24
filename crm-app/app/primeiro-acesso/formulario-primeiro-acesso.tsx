@@ -7,7 +7,7 @@ import { configurarPrimeiroAcesso } from "../login/actions";
 
 const estadoInicial: EstadoFormulario = {};
 
-export function FormularioPrimeiroAcesso() {
+export function FormularioPrimeiroAcesso({ pedirCodigo }: { pedirCodigo: boolean }) {
   const [estado, enviar, salvando] = useActionState(
     configurarPrimeiroAcesso,
     estadoInicial,
@@ -22,6 +22,14 @@ export function FormularioPrimeiroAcesso() {
           Crie seu usuário. Você vai usar este e-mail e esta senha para entrar.
         </p>
       </div>
+      {pedirCodigo && (
+        <Campo
+          rotulo="Código de configuração"
+          nome="codigo"
+          tipo="password"
+          obrigatorio
+        />
+      )}
       <Campo rotulo="Seu nome" nome="nome" valor={v?.nome} obrigatorio />
       <Campo rotulo="E-mail" nome="email" tipo="email" valor={v?.email} obrigatorio />
       <Campo rotulo="Senha (mínimo 8 caracteres)" nome="senha" tipo="password" obrigatorio />

@@ -6,7 +6,7 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { redirect } from "next/navigation";
-import { sistemaConfigurado } from "@/lib/autenticacao";
+import { exigenciaCodigoPrimeiroAcesso, sistemaConfigurado } from "@/lib/autenticacao";
 import { FormularioPrimeiroAcesso } from "./formulario-primeiro-acesso";
 
 export const metadata = {
@@ -26,5 +26,19 @@ export default function PaginaPrimeiroAcesso() {
 async function Conteudo() {
   await connection();
   if (await sistemaConfigurado()) redirect("/login");
-  return <FormularioPrimeiroAcesso />;
+
+  const exigencia = exigenciaCodigoPrimeiroAcesso();
+  if (exigencia === "faltando") {
+    return (
+      <div className="grid gap-2 rounded-lg border border-zinc-200 p-6 text-sm dark:border-zinc-800">
+        <h1 className="text-xl font-semibold">Configuração pendente</h1>
+        <p>
+          Para criar o primeiro usuário, defina a variável{" "}
+          <code className="font-mono">CODIGO_PRIMEIRO_ACESSO</code> no servidor e
+          recarregue esta página.
+        </p>
+      </div>
+    );
+  }
+  return <FormularioPrimeiroAcesso pedirCodigo={exigencia === "sim"} />;
 }

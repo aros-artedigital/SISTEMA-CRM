@@ -6,6 +6,10 @@ import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { emailValido, lerCampo, type EstadoFormulario } from "@/lib/formulario";
+import {
+  codigoPrimeiroAcessoCorreto,
+  exigenciaCodigoPrimeiroAcesso,
+} from "@/lib/autenticacao";
 import { apagarSessao, criarSessao } from "@/lib/sessao";
 
 // Custo do bcrypt: quanto maior, mais lento para quem tenta adivinhar senhas
@@ -41,19 +45,60 @@ export async function entrar(
 
   const usuario = await prisma.usuario.findUnique({
     where: { email },
-    select: { id: true, senhaHash: true },
+    select: { id: true, senhaHash: true, bloqueadoAte: true },
   });
+
+  // Conta bloqueada por excesso de tentativas: nem confere a senha.
+  if (usuario?.bloqueadoAte && usuario.bloqueadoAte > new Date()) {
+    const minutos = Math.ceil((usuario.bloqueadoAte.getTime() - Date.now()) / 60_000);
+    return erroLogin(
+      `Muitas tentativas erradas. Tente de novo em ${minutos} minuto(s).`,
+      email,
+    );
+  }
 
   const hash = usuario?.senhaHash || (await obterHashFalso());
   const senhaCorreta = await bcrypt.compare(senha, hash);
 
   // Mesma mensagem para "e-mail não existe" e "senha errada", de propósito.
   if (!usuario || !usuario.senhaHash || !senhaCorreta) {
+    if (usuario) await registrarFalha(usuario.id);
     return erroLogin("E-mail ou senha incorretos.", email);
   }
 
+  // Deu certo: zera o contador de erros.
+  await prisma.usuario.update({
+    where: { id: usuario.id },
+    data: { tentativasFalhas: 0, bloqueadoAte: null },
+  });
+
   await criarSessao(usuario.id);
   redirect("/");
+}
+
+// Proteção contra quem tenta adivinhar a senha: após MAX_TENTATIVAS erros
+// seguidos, a conta fica bloqueada por alguns minutos.
+const MAX_TENTATIVAS = 5;
+const MINUTOS_BLOQUEIO = 15;
+
+async function registrarFalha(usuarioId: string): Promise<void> {
+  // `increment` soma direto no banco, sem risco de perder uma contagem
+  // se duas tentativas chegarem ao mesmo tempo.
+  const { tentativasFalhas } = await prisma.usuario.update({
+    where: { id: usuarioId },
+    data: { tentativasFalhas: { increment: 1 } },
+    select: { tentativasFalhas: true },
+  });
+
+  if (tentativasFalhas >= MAX_TENTATIVAS) {
+    await prisma.usuario.update({
+      where: { id: usuarioId },
+      data: {
+        tentativasFalhas: 0,
+        bloqueadoAte: new Date(Date.now() + MINUTOS_BLOQUEIO * 60_000),
+      },
+    });
+  }
 }
 
 export async function sair(): Promise<void> {
@@ -81,6 +126,15 @@ export async function configurarPrimeiroAcesso(
     return devolver(`A senha precisa ter pelo menos ${SENHA_MINIMA} caracteres.`);
   }
   if (senha !== confirmacao) return devolver("As senhas não são iguais.");
+
+  // Na internet, só quem sabe o código de configuração pode criar o usuário.
+  const exigencia = exigenciaCodigoPrimeiroAcesso();
+  if (exigencia === "faltando") {
+    return devolver("O código de configuração não foi definido no servidor.");
+  }
+  if (exigencia === "sim" && !codigoPrimeiroAcessoCorreto(formData.get("codigo"))) {
+    return devolver("Código de configuração incorreto.");
+  }
 
   const senhaHash = await bcrypt.hash(senha, CUSTO_BCRYPT);
 

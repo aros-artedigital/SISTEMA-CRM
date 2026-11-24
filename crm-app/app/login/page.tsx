@@ -3,7 +3,7 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { redirect } from "next/navigation";
-import { sistemaConfigurado } from "@/lib/autenticacao";
+import { sistemaConfigurado, usuarioOpcional } from "@/lib/autenticacao";
 import { FormularioLogin } from "./formulario-login";
 
 export const metadata = {
@@ -22,6 +22,8 @@ export default function PaginaLogin() {
 
 async function ConteudoLogin() {
   await connection();
+  // Já está logado (e o usuário existe de verdade no banco)? Vai para o início.
+  if (await usuarioOpcional()) redirect("/");
   // Ninguém definiu senha ainda? Então é o primeiro acesso.
   if (!(await sistemaConfigurado())) redirect("/primeiro-acesso");
   return <FormularioLogin />;
