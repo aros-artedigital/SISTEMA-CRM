@@ -36,25 +36,30 @@ Pré-requisitos: Node.js 20 ou mais novo e PostgreSQL rodando.
 > **Windows:** se o PowerShell disser que "a execução de scripts foi
 > desabilitada", use `npm.cmd` no lugar de `npm` (ex.: `npm.cmd run dev`).
 
-## Publicar na internet (Vercel + Neon)
+## Publicado na internet (Vercel + Neon)
 
-1. Crie um banco PostgreSQL gratuito em https://neon.tech e copie a
-   *connection string* (começa com `postgresql://`).
-2. Aplique as tabelas nesse banco (no PowerShell, dentro de `crm-app`):
+Endereço: **https://sistema-crm-three.vercel.app**
 
-   ```powershell
-   $env:DATABASE_URL="COLE_AQUI_A_CONNECTION_STRING"; npx prisma migrate deploy
-   ```
+- **Projeto Vercel:** `sistema-crm` (região São Paulo, `gru1`).
+- **Banco:** Neon `crm-db`, criado pela integração da Vercel (São Paulo). A
+  integração cria `DATABASE_URL` e `DATABASE_URL_UNPOOLED` sozinha.
+- **Tabelas:** criadas/atualizadas automaticamente a cada publicação
+  (`vercel-build` roda `scripts/migrar.mjs` antes do build).
+- **Chave de sessão:** sem `SESSION_SECRET` no servidor, ela é derivada da
+  senha do banco (`lib/sessao.ts`).
+- **Usuário:** o mesmo do computador (copiado para o banco online). Por isso o
+  primeiro acesso online fica fechado; `CODIGO_PRIMEIRO_ACESSO` só é
+  necessário se o banco online estiver vazio.
 
-3. Em https://vercel.com, importe o repositório do GitHub e defina:
-   - **Root Directory:** `crm-app`
-   - **Environment Variables:** `DATABASE_URL` (a do Neon), `SESSION_SECRET`
-     (uma chave nova, veja `.env.example`) e `CODIGO_PRIMEIRO_ACESSO`
-     (um código que só você saiba).
-4. Depois do deploy, abra o endereço do site, faça o primeiro acesso usando o
-   código e crie seu usuário. Depois disso, pode apagar `CODIGO_PRIMEIRO_ACESSO`.
+### Publicar uma nova versão
 
-Sempre que houver uma migração nova em `prisma/migrations`, repita o passo 2.
+Dentro de `crm-app` (use `npx.cmd` se o PowerShell bloquear `npx`):
+
+```powershell
+npx vercel@latest deploy --prod
+```
+
+O arquivo `.vercelignore` garante que `.env` e outros segredos nunca sejam enviados.
 
 ## Onde fica cada coisa
 
