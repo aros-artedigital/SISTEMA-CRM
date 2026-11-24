@@ -2,8 +2,12 @@
 // Baseado em H:\DEV\crm\modelo-de-dados.md
 
 generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
+  provider   = "prisma-client"
+  output     = "../app/generated/prisma"
+  // "client": o Prisma conversa com o PostgreSQL por um driver JavaScript
+  // (@prisma/adapter-pg), sem o "motor" binário nativo. Isso evita problemas
+  // na Vercel, onde o arquivo binário não era incluído no servidor.
+  engineType = "client"
 }
 
 datasource db {
