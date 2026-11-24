@@ -5,18 +5,28 @@
 // passar por outro usuário: se o conteúdo mudar, a assinatura deixa de bater.
 import "server-only";
 
+import { createHmac } from "node:crypto";
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 
 const NOME_COOKIE = "crm_sessao";
 const DURACAO_DIAS = 7;
 
+// Chave que assina o cookie.
+// 1. Se SESSION_SECRET existir (como no seu computador), usa ela.
+// 2. Senão, deriva uma chave da senha do banco (DATABASE_URL), que o servidor
+//    sempre tem. Quem conhecesse a senha do banco já teria acesso a tudo, então
+//    isso não enfraquece a segurança. (Trocar a senha do banco desconecta todos.)
 function chave(): Uint8Array {
-  const segredo = process.env.SESSION_SECRET;
-  if (!segredo || segredo.length < 32) {
-    throw new Error("SESSION_SECRET ausente ou curto demais no arquivo .env.");
+  const segredo = process.env.SESSION_SECRET?.trim();
+  if (segredo && segredo.length >= 32) {
+    return new TextEncoder().encode(segredo);
   }
-  return new TextEncoder().encode(segredo);
+  const banco = process.env.DATABASE_URL;
+  if (banco) {
+    return new Uint8Array(createHmac("sha256", banco).update("crm-sessao-v1").digest());
+  }
+  throw new Error("Defina SESSION_SECRET (ou DATABASE_URL) no servidor.");
 }
 
 type DadosSessao = { usuarioId: string };
