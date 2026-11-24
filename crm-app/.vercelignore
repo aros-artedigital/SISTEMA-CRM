@@ -1,0 +1,8 @@
+# Arquivos que NUNCA devem ser enviados para a Vercel pela linha de comando.
+# Senhas e chaves ficam nas "Environment Variables" do projeto na Vercel.
+.env*
+!.env.example
+node_modules
+.next
+app/generated
+*.tsbuildinfo
